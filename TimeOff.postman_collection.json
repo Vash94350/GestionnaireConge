@@ -1,0 +1,141 @@
+{
+	"info": {
+		"_postman_id": "a3cca97c-8298-40d1-b4ec-f88e1b8467ec",
+		"name": "TimeOff",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "26fa2fb8-8970-4e48-876f-e2bbe59a3a03",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"UserName\":\"manager\",\"Password\":\"manager\",\"PasswordId\":\"9903ED01-A73C-4874-8ABF-D2678E3AE23D\"}"
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/users/login/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"users",
+						"login",
+						""
+					]
+				},
+				"description": "Login"
+			},
+			"response": []
+		},
+		{
+			"name": "RequestTimeOff",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{Employee1Token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"userId\": 1,\n    \"requestId\": \"f1511bdc-5008-4d99-899f-cfef79cd0539\",\n    \"start\": {\n        \"date\": \"2019-01-01T00:00:00\",\n        \"halfDay\": {\n            \"case\": \"AM\"\n        }\n    },\n    \"end\": {\n        \"date\": \"2019-01-01T00:00:00\",\n        \"halfDay\": {\n            \"case\": \"PM\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/timeoff/request",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"timeoff",
+						"request"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ValidateRequest",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ManagerToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/timeoff/validate-request?UserId=1&RequestId=f1511bdc-5008-4d99-899f-cfef79cd0539",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"timeoff",
+						"validate-request"
+					],
+					"query": [
+						{
+							"key": "UserId",
+							"value": "1"
+						},
+						{
+							"key": "RequestId",
+							"value": "f1511bdc-5008-4d99-899f-cfef79cd0539"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
