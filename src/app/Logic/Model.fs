@@ -51,11 +51,23 @@ module Logic =
         let newRequestState = evolveRequest requestState event
         userRequests.Add (event.Request.RequestId, newRequestState)
 
-    let overlapsWith request1 request2 =
-        false //TODO: write a function that checks if 2 requests overlap
+    let overlapsWith request1 request2: bool =
+        let aTuple=(request1,request2)
+        if(not(request1.UserId.Equals request2.UserId)) then false
+        else 
+        match aTuple with
+            | (a,b) when b.Start.Date > a.Start.Date && b.Start.Date < a.End.Date -> true
+            | (a,b) when a.Start.Date > b.Start.Date && a.Start.Date < b.End.Date -> true
+            | (a,b) when b.End.Date < a.End.Date && b.End.Date > a.Start.Date -> true
+            | (a,b) when a.End.Date < b.End.Date && a.End.Date > b.Start.Date -> true
+            | _ -> false
 
     let overlapsWithAnyRequest (otherRequests: TimeOffRequest seq) request =
-        false //TODO: write this function using overlapsWith
+        let list = otherRequests |> Seq.toList
+                                 |> List.filter (fun arg1 -> overlapsWith request arg1)
+        if(not(list.IsEmpty)) then true
+        else false
+        
 
     let createRequest activeUserRequests  request =
         if request |> overlapsWithAnyRequest activeUserRequests then
