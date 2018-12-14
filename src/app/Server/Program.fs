@@ -74,7 +74,7 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
 
         // Finally, return the result
         result
-        
+        //ICI pour gerer les routes
     choose [
         subRoute "/api"
             (choose [
