@@ -27,7 +27,7 @@ let overlapTests =
       let request = {
         UserId = 1
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2018, 10, 1); HalfDay = AM }
+        Start = { Date = DateTime(2018, 10, 2); HalfDay = AM }
         End = { Date = DateTime(2018, 10, 1); HalfDay = PM }
       }
 
@@ -133,10 +133,98 @@ let validationTests =
       |> When (ValidateRequest (1, request.RequestId))
       |> Then (Ok [RequestValidated request]) "The request should have been validated"
     }
+
+    test "A request can t be validated by employee" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs (Employee 1)
+      |> AndDateIs(2018,05,19)
+      |> When (ValidateRequest (1, request.RequestId))
+      |> Then (Error "You must refer to your Manager") "The request should have not been validated"
+    }
+
+    test "A request can t be validated if start date is in the past" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> AndDateIs(2018,12,29)
+      |> When (ValidateRequest (1, request.RequestId))
+      |> Then (Error "It s too late to valide this request") "The request should have not been validated"
+    }
   ]
 
 [<Tests>]
-let cancerllationTests = 
+let refusationTests =
+  testList "Refusation tests" [
+    test "A request is refused" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> AndDateIs(2018,05,19)
+      |> When (RefuseRequest (1, request.RequestId))
+      |> Then (Ok [RequestRefused request]) "The request should have been refused"
+    }
+
+    test "A request with a start date in the future can t be refused by employee" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs (Employee 1)
+      |> AndDateIs(2018,05,19)
+      |> When (RefuseRequest (1, request.RequestId))
+      |> Then (Error "You can cancel but not refuse this request") "The request should not have been refused"
+    }
+
+    test "A request with a start date in the past can t be refused by employee" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs (Employee 1)
+      |> AndDateIs(2019,05,19)
+      |> When (RefuseRequest (1, request.RequestId))
+      |> Then (Error "Unauthorized") "The request should not have been refused"
+    }
+
+    test "A request can t be refused by Manager if start date is in the past" {
+      let request = {
+        UserId = 1
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+        End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> AndDateIs(2018,12,29)
+      |> When (RefuseRequest (1, request.RequestId))
+      |> Then (Error "It s too late to refuse this request") "The request should have not been refused"
+    }
+]
+
+[<Tests>]
+let cancellationTests = 
     testList "Cancellation tests" [
         test "A request is cancelled" {
             let request = {
@@ -151,17 +239,75 @@ let cancerllationTests =
             |> When (CancelRequest (1, request.RequestId))
             |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
         }
-        test "A validated request is cancelled" {
+
+        test "A validated request is cancelled by employee" {
             let request = {
                 UserId = 1;
                 RequestId = Guid.NewGuid()
                 Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
                 End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
 
-            Given [ RequestCreated request; RequestValidated request ]
+            Given [ RequestValidated request]
             |> ConnectedAs(Employee 1)
+            |> AndDateIs(2018,05,19)
+            |> When (CancelRequest (1, request.RequestId))
+            |> Then (Error "This request is validated, you must ask to your manager to cancel it") "The request should not have been cancelled"
+        }
+
+        test "A validated request is cancelled by Manager" {
+            let request = {
+                UserId = 1;
+                RequestId = Guid.NewGuid()
+                Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+                End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+            Given [ RequestValidated request]
+            |> ConnectedAs(Manager)
             |> AndDateIs(2018,05,19)
             |> When (CancelRequest (1, request.RequestId))
             |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
         }
+
+        test "A validated request is cancelled by Manager" {
+            let request = {
+                UserId = 1;
+                RequestId = Guid.NewGuid()
+                Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+                End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+            Given [ RequestAskingCancelOfAValidated request]
+            |> ConnectedAs(Manager)
+            |> AndDateIs(2018,05,19)
+            |> When (CancelRequest (1, request.RequestId))
+            |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
+        }
+
+        test "A validated request is cancelled by Manager" {
+            let request = {
+                UserId = 1;
+                RequestId = Guid.NewGuid()
+                Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+                End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+            Given [RequestAskingCancelOfAValidatedRefused request]
+            |> ConnectedAs(Manager)
+            |> AndDateIs(2018,05,19)
+            |> When (CancelRequest (1, request.RequestId))
+            |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
+        }
+
+        test "A validated request is cancelled by employee" {
+            let request = {
+                UserId = 1;
+                RequestId = Guid.NewGuid()
+                Start = { Date = DateTime(2018, 12, 28); HalfDay = AM }
+                End = { Date = DateTime(2018, 12, 28); HalfDay = PM } }
+
+            Given [RequestValidated request]
+            |> ConnectedAs(Employee 1)
+            |> AndDateIs(2018,05,19)
+            |> When (CancelRequest (1, request.RequestId))
+            |> Then (Error "You can't cancel this request. Pleaze Refer to your manager") "The request should have been cancelled"
+        }
+
     ]

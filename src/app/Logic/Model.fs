@@ -23,7 +23,7 @@ type Command =
     member this.UserId =
         match this with
         | RequestTimeOff request -> request.UserId
-        | ValidateRequest (userId, _) -> userId
+        | ValidateRequest (userId,_) -> userId
         | CancelRequest(userId, _) -> userId
         | AskingCancelOfAValidatedRequest(userId, _) -> userId
         | RefuseRequest(userId, _) -> userId
@@ -149,11 +149,20 @@ module Logic =
         | _ ->
             Error "Request cannot be validated"
 
+    let refuseRequest requestState =
+        match requestState with
+        | PendingValidation request ->
+            Ok [RequestRefused request]
+        | _ ->
+            Error "Request cannot be refused"
+
     let cancelRequest requestState =
         match requestState with
         | PendingValidation request ->
             Ok [RequestCancelled request]
         | AskingCancelOfAValidated request ->
+            Ok [RequestCancelled request]
+        | AskingCancelOfAValidatedRefused request ->
             Ok [RequestCancelled request]
         | _ ->
             Error "Request cannot be cancelled"
@@ -169,7 +178,10 @@ module Logic =
         let relatedUserId = command.UserId
         match user with
         | Employee userId when userId <> relatedUserId ->
-            Error "Unauthorized"
+            match command with
+            | RefuseRequest (_, requestId) ->
+                Error "You can cancel but not refuse this request"
+            | _ -> Error "Unauthorized"
         | _ ->
             match command with
             | RequestTimeOff request ->
@@ -184,7 +196,32 @@ module Logic =
 
             | ValidateRequest (_, requestId) ->
                 if user <> Manager then
-                    Error "Unauthorized"
+                    Error "You must refer to your Manager"
                 else
-                    let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
-                    validateRequest requestState
+                    let request = defaultArg (userRequests.TryFind requestId) NotCreated
+                    if request.Request.Start.Date < today then 
+                        Error "It s too late to valide this request"
+                    else
+                        let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                        validateRequest requestState
+            | RefuseRequest (_, requestId) ->
+                let request = defaultArg (userRequests.TryFind requestId) NotCreated
+                if (user <> Manager && request.Request.Start.Date > today) then
+                    Error "You can cancel but not refuse this request"
+                else
+                    if(user <> Manager) then
+                        Error "Unauthorized"
+                    else
+                        if request.Request.Start.Date < today then
+                            Error "It s too late to refuse this request"
+                        else
+                            let requestState = defaultArg (userRequests.TryFind requestId) NotCreated  
+                            refuseRequest requestState
+            | CancelRequest (_, requestid) ->
+                let request = defaultArg (userRequests.TryFind requestid) NotCreated
+                if (user <> Manager) then
+                    Error "you can't cancel this request. pleaze refer to your manager"
+                else
+                    Error "carotte"
+
+                    
